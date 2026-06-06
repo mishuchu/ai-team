@@ -1,0 +1,22 @@
+# Hermes Agent Configuration
+# Generated for agent: {{ agent_name }}
+
+homeserver: http://{{ matrix_server_ip }}:8008
+
+matrix:
+  user_id: "@{{ agent_name }}:{{ matrix_domain }}"
+  password: "{{ agent_password }}"
+  device_id: "HERMES-{{ agent_name }}"
+  homeserver_url: "http://{{ matrix_server_ip }}:8008"
+
+agent:
+  name: "{{ agent_name }}"
+  role: "{{ agent_role }}"
+  storage_dir: /opt/hermes/storage
+  skills_dir: /opt/hermes/skills
+
+team:
+  protocol: matrix
+  listen_rooms:
+    - "#team-general:{{ matrix_domain }}"
+  admin_user: "@admin:{{ matrix_domain }}"

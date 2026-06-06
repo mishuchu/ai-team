@@ -1,0 +1,73 @@
+---
+# Hermes Agent Role
+# Installs and configures Hermes Agent with matrix-nio SDK
+
+- name: Install prerequisites
+  apt:
+    name:
+      - python3
+      - python3-pip
+      - python3-venv
+      - git
+      - curl
+    state: present
+    update_cache: yes
+
+- name: Create hermes user
+  user:
+    name: hermes
+    system: yes
+    create_home: yes
+    shell: /bin/bash
+
+- name: Create hermes application directory
+  file:
+    path: /opt/hermes
+    state: directory
+    owner: hermes
+    group: hermes
+    mode: '0755'
+
+- name: Clone Hermes Agent repository
+  git:
+    repo: https://github.com/NousResearch/hermes-agent.git
+    dest: /opt/hermes/hermes-agent
+    version: main
+    force: yes
+  become: yes
+  become_user: hermes
+
+- name: Install matrix-nio and dependencies
+  pip:
+    name:
+      - matrix-nio
+      - aiohttp
+      - PyYAML
+      - async-timeout
+    state: present
+
+- name: Create agent config
+  template:
+    src: agent-config.yaml.j2
+    dest: /opt/hermes/config.yaml
+    owner: hermes
+    group: hermes
+    mode: '0600'
+  vars:
+    matrix_server_ip: "{{ matrix_server_ip }}"
+    matrix_domain: "{{ matrix_domain }}"
+    agent_name: "{{ agent_name }}"
+    agent_password: "{{ agent_password }}"
+
+- name: Create systemd service for hermes
+  template:
+    src: hermes.service.j2
+    dest: /etc/systemd/system/hermes-agent@{{ agent_name }}.service
+    mode: '0644'
+
+- name: Enable hermes service
+  systemd:
+    name: hermes-agent@{{ agent_name }}
+    enabled: yes
+    daemon_reload: yes
+    state: started

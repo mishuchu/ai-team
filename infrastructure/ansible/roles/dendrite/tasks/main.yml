@@ -1,0 +1,71 @@
+# Dendrite Homeserver Role
+# Installs and configures Dendrite Matrix homeserver
+
+- name: Install Dendrite prerequisites
+  apt:
+    name:
+      - curl
+      - gnupg
+      - ca-certificates
+      - lsb-release
+    state: present
+    update_cache: yes
+
+- name: Add Dendrite GPG key
+  apt_key:
+    url: https://packages.matrix.org/gpg.key
+    state: present
+
+- name: Add Dendrite repository
+  apt_repository:
+    repo: "deb https://packages.matrix.org/debian {{ ansible_distribution_release }} main"
+    state: present
+
+- name: Install Dendrite
+  apt:
+    name: matrix-dendrite
+    state: present
+    install_recommends: no
+
+- name: Create Dendrite config directory
+  file:
+    path: /etc/dendrite
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+
+- name: Generate signing key
+  command: |
+    python3 -c "
+    import secrets, base64
+    key = secrets.token_hex(32)
+    print(key)
+    "
+  register: signing_key
+  changed_when: false
+
+- name: Deploy Dendrite config
+  template:
+    src: dendrite.yaml.j2
+    dest: /etc/dendrite/dendrite.yaml
+    owner: root
+    group: root
+    mode: '0600'
+  vars:
+    signing_key_value: "{{ signing_key.stdout }}"
+
+- name: Enable and start Dendrite
+  systemd:
+    name: dendrite
+    enabled: yes
+    state: started
+    daemon_reload: yes
+
+- name: Wait for Dendrite to be ready
+  wait_for:
+    host: "{{ ansible_host }}"
+    port: 8008
+    delay: 2
+    timeout: 30
+    state: started
