@@ -1,0 +1,101 @@
+# reachd 信道配置示例
+# 复制此文件为 channels.yaml 并修改
+
+node:
+  id: "pve-node-1"           # 节点唯一 ID
+  name: "PVE Home Lab"       # 节点名称
+  location: "home"           # home / vps / cloud
+
+channels:
+  - name: tailscale
+    enabled: true
+    priority: 1               # 优先级，1 最高
+    health_check:
+      enabled: true
+      interval: 10           # 检测间隔（秒）
+      timeout: 5 # 超时（秒）
+      target: "100.64.0.1"   # Tailscale 控制节点 IP
+    config:
+      # Tailscale auth key (从 https://login.tailscale.io/admin/settings/keys 获取)
+      auth_key: "${TAILSCALE_AUTH_KEY}"
+      # 接管已有 Tailscale iface 而非创建新接口
+      accept_routes: true
+      # 允许作为出口节点
+      exit_node: false
+      # 额外 Flags
+      extra_flags:
+        - "--accept-dns"
+
+  - name: cloudflare
+    enabled: true
+    priority: 2
+    health_check:
+      enabled: true
+      interval: 15
+      timeout: 5
+      target: "162.159.36.1"  # cloudflare任意节点
+    config:
+      # cloudflared tunnel token (从 https://dash.cloudflare.com 获取)
+      tunnel_token: "${CLOUDFLARE_TUNNEL_TOKEN}"
+      # tunnel 名称（可选）
+      tunnel_name: "reachd-tunnel"
+      # ingress 规则
+      ingress:
+        - hostname: "reachd.example.com"
+          service: "http://localhost:8080"
+        - service: "http_status:404"
+
+  - name: ssh
+    enabled: true
+    priority: 3
+    health_check:
+      enabled: true
+      interval: 20
+      timeout: 5
+      target: "${SSH_TARGET_HOST}:22"
+    config:
+      # VPS 公网 IP 或域名
+      host: "${SSH_HOST}"
+      port: 22
+      user: "reachd"
+      # SSH key 路径
+      key_path: "/run/secrets/ssh_key"
+      # 保持连接（用于 SSH tunnel）
+      keepalive: 10
+      # 反向隧道（可选，用于从 VPS 访问此节点）
+      reverse_tunnel:
+        enabled: false
+        local_port: 8080
+        remote_port: 22022
+
+proxy:
+  # 固定入口配置
+  ingress:
+    http: 8080
+    https: 8443
+    # nginx 或 keepalived
+    type: "nginx"
+  upstream:
+    # 应用实际监听的端口
+    app_port: 8080
+    # 负载策略
+    balance: "least_conn"
+  health_check:
+    interval: 5
+    path: "/health"
+    retries: 3
+
+# 告警配置
+notifications:
+  enabled: true
+  channels:
+    - type: "feishu" # 飞书通知（后续实现）
+      webhook_url: "${FEISHU_WEBHOOK}"
+    - type: "log"
+      level: "INFO"
+
+# 日志配置
+logging:
+  level: "INFO" # DEBUG / INFO / WARNING / ERROR
+  format: "json"              # json / text
+  output: "stdout"            # stdout / file
