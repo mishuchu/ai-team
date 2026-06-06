@@ -35,7 +35,7 @@
 
 | 模块 | 路径 | 说明 |
 |------|------|------|
-| `infrastructure/` | IaC | Terraform + Ansible，PVE 上自动化部署 |
+| `infrastructure/` | IaC | Terraform + Ansible，PVE 上自动化部署（reachd 已独立为 https://github.com/mishuchu/reachd）|
 | `matrix/` | 消息服务 | Dendrite Homeserver + Element Web |
 | `agent/` | Agent 运行时 | Hermes Agent + matrix-nio SDK |
 | `team/` | 团队管理 | Agent 角色定义 + 协作规则 |
