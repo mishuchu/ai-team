@@ -1,0 +1,45 @@
+---
+- name: Enable IP forwarding
+  lineinfile:
+    path: /etc/sysctl.conf
+    regexp: "^net.ipv4.ip_forward"
+    line: "net.ipv4.ip_forward=1"
+    create: true
+
+- name: Apply IP forwarding now
+  shell: sysctl -w net.ipv4.ip_forward=1
+
+- name: Ensure NAT MASQUERADE rule
+  iptables:
+    table: nat
+    chain: POSTROUTING
+    source: "10.0.8.0/24"
+    destination: "!10.0.8.0/24"
+    jump: MASQUERADE
+    state: present
+
+- name: Install nginx
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Deploy nginx reverse proxy config
+  template:
+    src: nginx-ai-team.conf.j2
+    dest: /etc/nginx/sites-available/ai-team-proxy
+    owner: root
+    mode: "0644"
+  notify: Reload nginx
+
+- name: Enable ai-team-proxy site
+  file:
+    src: /etc/nginx/sites-available/ai-team-proxy
+    dest: /etc/nginx/sites-enabled/ai-team-proxy
+    state: link
+
+- name: Remove default nginx site
+  file:
+    path: /etc/nginx/sites-enabled/default
+    state: absent
+  notify: Reload nginx

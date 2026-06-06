@@ -1,0 +1,30 @@
+---
+# AI Team - Deploy all services via Ansible
+# Run from ai-team/infrastructure/ansible/
+
+- name: Configure Gateway (NAT + nginx)
+  hosts: gateway
+  gather_facts: false
+  roles:
+    - role: gateway
+      vars:
+        matrix_ip: "10.0.8.10"
+        element_ip: "10.0.8.20"
+
+- name: Deploy Matrix Dendrite
+  hosts: matrix_server
+  gather_facts: false
+  roles:
+    - role: dendrite
+
+- name: Deploy Element Web
+  hosts: element_web
+  gather_facts: false
+  roles:
+    - role: element-web
+
+- name: Deploy Agent Nodes
+  hosts: agent_nodes
+  gather_facts: false
+  roles:
+    - role: hermes-agent

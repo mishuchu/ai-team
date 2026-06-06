@@ -1,0 +1,65 @@
+---
+# Ansible Inventory for AI Team PVE Deployment
+# All services on isolated 10.0.8.x network
+
+all:
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: /root/.ssh/pve_key
+    ansible_python_interpreter: /usr/bin/python3
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+
+  children:
+    # Gateway: NAT router + nginx reverse proxy (LXC 200)
+    gateway:
+      hosts:
+        ai-team-gateway:
+          ansible_host: 192.168.111.254
+          ansible_ssh_private_key_file: /root/.ssh/pve_key
+
+    # Matrix Dendrite homeserver (LXC 110)
+    matrix_server:
+      hosts:
+        matrix-server:
+          ansible_host: 10.0.8.10
+          ansible_ssh_private_key_file: /root/.ssh/pve_key
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=root@192.168.111.254'
+          matrix_domain: ai-team.local
+          matrix_registration_secret: "changeme"
+
+    # Element Web UI (LXC 120)
+    element_web:
+      hosts:
+        element-web:
+          ansible_host: 10.0.8.20
+          ansible_ssh_private_key_file: /root/.ssh/pve_key
+          ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=root@192.168.111.254'
+          matrix_server_url: "http://10.0.8.10:8008"
+
+    # Agent nodes (LXC 131, 132, 133)
+    agent_nodes:
+      vars:
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=root@192.168.111.254'
+        matrix_server_url: "http://10.0.8.10:8008"
+        matrix_domain: ai-team.local
+      hosts:
+        agent-leader:
+          ansible_host: 10.0.8.30
+          agent_name: leader
+          agent_role: team-leader
+          agent_persona: "You are the Team Leader. Coordinate the team, assign tasks, report to the admin."
+        agent-architect:
+          ansible_host: 10.0.8.31
+          agent_name: architect
+          agent_role: architect
+          agent_persona: "You are the Architect. Design system architecture, review code, ensure best practices."
+        agent-core:
+          ansible_host: 10.0.8.32
+          agent_name: core
+          agent_role: core-engineer
+          agent_persona: "You are the Core Engineer. Implement core features, write production code."
+        agent-tester:
+          ansible_host: 10.0.8.33
+          agent_name: tester
+          agent_role: test-engineer
+          agent_persona: "You are the Test Engineer. Write tests, verify quality, run CI/CD checks."
