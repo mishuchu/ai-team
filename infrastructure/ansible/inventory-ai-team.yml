@@ -37,11 +37,14 @@ all:
           matrix_server_url: "http://10.0.8.10:8008"
 
     # Agent nodes (LXC 131, 132, 133)
-    agent_nodes:
+agent_nodes:
       vars:
-        ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=root@192.168.111.254'
+        ansible_ssh_common_args: '-o StrictHostKeyChecking=no -o ProxyJump=root@192.168.111.4'
         matrix_server_url: "http://10.0.8.10:8008"
         matrix_domain: ai-team.local
+        agent_password: "hermes123"
+        agent_homeserver_url: "http://10.0.8.10:8008"
+        team_room_id: "!YgnBfpazNqbwjATLhB:ai-team.local"
       hosts:
         agent-leader:
           ansible_host: 10.0.8.30

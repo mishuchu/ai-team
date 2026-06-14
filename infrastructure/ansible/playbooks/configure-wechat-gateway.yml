@@ -1,0 +1,67 @@
+---
+# Configure Hermes WeChat gateway for all agent nodes
+- name: Configure Hermes WeChat Gateway
+  hosts: agent_nodes
+  gather_facts: false
+  vars:
+    wechat_gateway_url: "http://10.0.8.10:8008"
+  tasks:
+    - name: Read WeChat token from gateway
+      shell: >
+        pct exec 110 -- bash -c
+        'cat /etc/hermes/gateways/wechat/wechat_gateway.json 2>/dev/null || 
+         find /etc /root /opt -name "*.json" 2>/dev/null | xargs grep -l "wechat" 2>/dev/null | head -1'
+      register: wechat_config_path
+      changed_when: false
+      failed_when: false
+
+    - name: Read WeChat gateway config
+      shell: >
+        pct exec 110 -- bash -c
+        'cat /root/.hermes/gateways/wechat/config.json 2>/dev/null ||
+         cat /etc/hermes/gateways/wechat/config.json 2>/dev/null ||
+         echo "{}"'
+      register: wechat_config_raw
+      changed_when: false
+      failed_when: false
+
+    - name: Create WeChat gateway config directory
+      file:
+        path: /root/.hermes/gateways/wechat
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Write WeChat gateway config to agent
+      copy:
+        content: |
+          {
+            "gateway_url": "http://10.0.8.10:8008",
+            "platform": "wechat",
+            "enabled": true
+          }
+        dest: /root/.hermes/gateways/wechat/config.json
+        mode: '0644'
+
+    - name: Patch hermes config to enable WeChat platform
+      blockinfile:
+        path: /root/.hermes/config.yaml
+        marker: "# {mark} ANSIBLE MANAGED BLOCK - WECHAT"
+        block: |
+          platforms:
+            wechat:
+              enabled: true
+              gateway_url: "http://10.0.8.10:8008"
+              bot_token: ""
+          team_room_id: "!YgnBfpazNqbwjATLhB:ai-team.local"
+        state: present
+      ignore_errors: true
+
+    - name: Restart Hermes service
+      shell: >
+        pct exec {{ ansible_host.split('.')[-1] | int - 129 }} --
+        systemctl --user restart hermes-agent 2>/dev/null ||
+        systemctl restart hermes-agent 2>/dev/null ||
+        echo "service restart attempted"
+      changed_when: true

@@ -114,6 +114,12 @@ variable "agent_base_ip" {
   default = "10.0.8.30"
 }
 
+variable "agent_ip_prefix" {
+  description = "IP prefix for agent nodes (e.g. 10.0.8)"
+  type        = string
+  default     = "10.0.8"
+}
+
 variable "matrix_domain" {
   type    = string
   default = "ai-team.local"
@@ -142,7 +148,7 @@ resource "null_resource" "gateway_lxc" {
           echo "Gateway LXC ${var.gateway_vmid} already exists"
         else
           echo "Creating gateway LXC ${var.gateway_vmid}..."
-          pct create ${var.gateway_vmid} /var/lib/vz/template/cache/debian-12-standard_amd64.tar.gz \
+          pct create ${var.gateway_vmid} /var/lib/vz/template/cache/debian-12-standard_12.12-1_amd64.tar.zst \
             --hostname ai-team-gateway \
             --memory 512 \
             --cores 1 \
@@ -181,7 +187,7 @@ resource "null_resource" "matrix_lxc" {
           echo "Matrix LXC ${var.matrix_vmid} already exists"
         else
           echo "Creating matrix LXC ${var.matrix_vmid}..."
-          pct create ${var.matrix_vmid} /var/lib/vz/template/cache/debian-12-standard_amd64.tar.gz \
+          pct create ${var.matrix_vmid} /var/lib/vz/template/cache/debian-12-standard_12.12-1_amd64.tar.zst \
             --hostname matrix-server \
             --memory 4096 \
             --cores 2 \
@@ -219,7 +225,7 @@ resource "null_resource" "element_lxc" {
           echo "Element LXC ${var.element_vmid} already exists"
         else
           echo "Creating element LXC ${var.element_vmid}..."
-          pct create ${var.element_vmid} /var/lib/vz/template/cache/debian-12-standard_amd64.tar.gz \
+          pct create ${var.element_vmid} /var/lib/vz/template/cache/debian-12-standard_12.12-1_amd64.tar.zst \
             --hostname element-web \
             --memory 1024 \
             --cores 1 \
@@ -255,16 +261,16 @@ resource "null_resource" "agent_containers" {
   provisioner "local-exec" {
     command = <<-EOT
       ssh -i ${var.pve_ssh_key} -o StrictHostKeyChecking=no root@${var.pve_host} '
-        vmid=$(((${var.agent_base_vmid}) + ${count}))
-        ip_octet=$((${count} + 30))
-        ip="${var.agent_base_ip%.*}.$ip_octet"
-        name="agent-node-${count}"
+        vmid=${var.agent_base_vmid}
+        ip_octet=$((vmid - ${var.agent_base_vmid} + 30))
+        ip="${var.agent_ip_prefix}.$ip_octet"
+        name="agent-node-$((vmid - ${var.agent_base_vmid}))"
         echo "Creating agent LXC $name (VMID $vmid, IP $ip)..."
         existing=$(pct list 2>/dev/null | grep -w "$vmid" || echo "")
         if [ -n "$existing" ]; then
           echo "Agent LXC $vmid already exists"
         else
-          pct create $vmid /var/lib/vz/template/cache/debian-12-standard_amd64.tar.gz \
+          pct create $vmid /var/lib/vz/template/cache/debian-12-standard_12.12-1_amd64.tar.zst \
             --hostname "$name" \
             --memory 2048 \
             --cores 1 \
@@ -275,7 +281,7 @@ resource "null_resource" "agent_containers" {
             --features keyctl=1 \
             --ostype debian \
             --onboot 1 \
-            --startup order=$((4 + ${count})),up=90 \
+            --startup order=$((4 + ${count.index})),up=90 \
             && echo "Agent LXC $vmid created"
         fi
         pct start $vmid
@@ -313,5 +319,5 @@ output "element_web" {
 
 output "agent_nodes" {
   description = "Agent node IPs"
-  value = [for i in range(var.agent_count) : "${var.agent_base_ip%.*}.$((30 + i))"]
+  value = [for i in range(var.agent_count) : "${var.agent_ip_prefix}.$((30 + i))"]
 }

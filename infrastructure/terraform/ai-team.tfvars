@@ -27,6 +27,7 @@ element_vmid         = 120
 element_ip           = "10.0.8.20"
 
 # Agent nodes (LXC 131, 132, 133...)
-agent_count          = 4
+agent_count          = 3
 agent_base_vmid     = 131
 agent_base_ip       = "10.0.8.30"
+matrix_registration_secret = "ai-team-matrix-secret-change-me"
